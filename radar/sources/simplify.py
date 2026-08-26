@@ -27,23 +27,43 @@ class SimplifySource(Source):
     @classmethod
     def handles(cls, url: str) -> bool:
         u = url.lower()
-        return "github.com/simplifyjobs" in u or "listings.json" in u
+        if "listings.json" in u:
+            return True
+        # Any GitHub repo that looks like a community internship / new-grad list
+        # publishes the same listings.json format (SimplifyJobs, vanshb03, cvrve, …).
+        if "github.com/" in u and any(
+            k in u for k in ("intern", "new-grad", "newgrad", "simplifyjobs")
+        ):
+            return True
+        return False
 
-    def _feed_url(self) -> str:
-        # Accept the human GitHub URL and translate it to the raw JSON feed.
+    def _feed_urls(self) -> list[str]:
+        """Candidate raw-JSON URLs to try, in order (repos use dev or main)."""
         if "listings.json" in self.url and "raw.githubusercontent" in self.url:
-            return self.url
+            return [self.url]
         m = _GITHUB_RE.search(self.url)
         if m:
             owner, repo = m.group(1), m.group(2).replace(".git", "")
-            return (f"https://raw.githubusercontent.com/{owner}/{repo}/"
-                    "dev/.github/scripts/listings.json")
-        return DEFAULT_FEED
+            base = f"https://raw.githubusercontent.com/{owner}/{repo}"
+            return [f"{base}/dev/.github/scripts/listings.json",
+                    f"{base}/main/.github/scripts/listings.json"]
+        return [DEFAULT_FEED]
 
     def fetch(self) -> list[RawListing]:
-        resp = requests.get(self._feed_url(), headers={"User-Agent": USER_AGENT}, timeout=45)
-        resp.raise_for_status()
-        data = resp.json()
+        data = None
+        last_exc: Exception | None = None
+        for feed in self._feed_urls():
+            try:
+                resp = requests.get(feed, headers={"User-Agent": USER_AGENT}, timeout=45)
+                if resp.status_code == 404:
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                break
+            except Exception as e:  # noqa: BLE001 — try the next candidate branch
+                last_exc = e
+        if data is None:
+            raise last_exc or RuntimeError("No listings.json found (tried dev and main)")
 
         out: list[RawListing] = []
         for r in data:

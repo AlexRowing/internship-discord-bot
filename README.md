@@ -78,21 +78,45 @@ python -m radar.selftest simplify          # the reliable SimplifyJobs feed
 python -m radar.selftest https://any-site  # test /watch handling for any URL
 ```
 
-## JavaScript-heavy sites (Runway, intern-list, interninsider)
+## Recommended sources (reliable, structured — just `/watch` them)
 
-These render listings in the browser, so they need a real headless browser:
+These GitHub-maintained lists all publish the same clean `listings.json`, so they
+scrape reliably and global de-dup merges their overlap:
+
+```
+/watch https://github.com/SimplifyJobs/Summer2027-Internships
+/watch https://github.com/vanshb03/Summer2027-Internships
+/watch https://github.com/SimplifyJobs/New-Grad-Positions
+```
+
+## JavaScript-heavy sites (Runway, intern-list, interninsider) — experimental
+
+These render listings in the browser, so they need Playwright:
 
 ```bash
 pip install playwright
 python -m playwright install chromium
 ```
 
-The bot auto-routes those domains through Playwright. **Honest caveat:** generic
-extraction on a rendered page is best-effort — some sites use bot-protection or
-unusual markup and will need per-site selectors (see `radar/sources/simplify.py`
-for the gold-standard pattern to copy). The `interninsider.me` link contains a
-**personal token** — keep it in `.env` as `INTERNINSIDER_URL`, never in code, and
-consider rotating it since it was shared in plaintext.
+The bot auto-routes those domains through Playwright, but **investigation showed
+they resist scraping** and are not reliably supported today:
+
+- **Runway** (`app.joinrunway.io`) — an authenticated single-page app. The explore
+  page shows *recommendations* that require a logged-in session, its job cards use
+  obfuscated markup, and its tRPC API evicts response bodies. Would need a real
+  logged-in browser session to scrape.
+- **intern-list.com** — a front-end for **jobright.ai**; the listings come from
+  jobright's private API, not the page HTML. Hitting that directly is brittle and
+  ToS-gray.
+- **interninsider.me** — requires a **personal token**. Keep it in `.env` as
+  `INTERNINSIDER_URL`, never in code, and rotate it since it was shared in
+  plaintext.
+
+If you `/watch` one of these, the bot won't crash — it just tends to find nothing,
+and `/radar` will flag it as unproductive. For real coverage, prefer the
+structured GitHub feeds above. To properly support a JS site, replace the generic
+extraction in `radar/sources/playwright_source.py` with per-site selectors (or an
+authenticated session) — see `radar/sources/simplify.py` for the gold standard.
 
 ## How it's built
 
