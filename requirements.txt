@@ -1,0 +1,9 @@
+# Core (required)
+discord.py>=2.4
+requests>=2.31
+beautifulsoup4>=4.12
+python-dotenv>=1.0
+
+# Optional: only needed to scrape JavaScript-heavy sites (Runway, intern-list).
+# After installing, also run once:  python -m playwright install chromium
+playwright>=1.44
