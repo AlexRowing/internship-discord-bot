@@ -180,6 +180,35 @@ class Database:
             other_sources=[o["name"] for o in others],
         )
 
+    # ---- browsing / search ----------------------------------------------
+
+    def _rows_to_listings(self, rows) -> list[Listing]:
+        out = []
+        for row in rows:
+            out.append(Listing(
+                id=row["id"], fingerprint=row["fingerprint"], company=row["company"],
+                title=row["title"], location=row["location"], url=row["url"],
+                term=row["term"], category=row["category"],
+                first_seen_at=row["first_seen_at"], first_source_id=row["first_source_id"],
+                notified=row["notified"], other_sources=[],
+            ))
+        return out
+
+    def recent_listings(self, limit: int = 10) -> list[Listing]:
+        rows = self._conn.execute(
+            "SELECT * FROM listings ORDER BY first_seen_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return self._rows_to_listings(rows)
+
+    def search_listings(self, query: str, limit: int = 10) -> list[Listing]:
+        like = f"%{query.strip()}%"
+        rows = self._conn.execute(
+            "SELECT * FROM listings WHERE company LIKE ? OR title LIKE ? "
+            "ORDER BY first_seen_at DESC LIMIT ?",
+            (like, like, limit),
+        ).fetchall()
+        return self._rows_to_listings(rows)
+
     # ---- stats -----------------------------------------------------------
 
     def counts(self) -> dict:

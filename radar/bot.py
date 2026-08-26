@@ -61,6 +61,21 @@ def listing_view(listing: Listing, source_url: str = "") -> discord.ui.View | No
     return view if added else None
 
 
+def browse_embed(heading: str, listings: list[Listing]) -> discord.Embed:
+    if not listings:
+        return discord.Embed(title=heading, description="_Nothing found yet._",
+                             color=0x95a5a6)
+    lines = []
+    for l in listings:
+        title = l.title[:80]
+        head = f"[{title}]({l.url})" if l.url.startswith("http") else title
+        bits = [b for b in (l.company, (l.location or "")[:40], (l.term or "")[:30]) if b]
+        sub = " · ".join(bits)
+        lines.append(f"**{head}**" + (f"\n{sub}" if sub else ""))
+    return discord.Embed(title=heading, description="\n\n".join(lines)[:4000],
+                         color=0x1abc9c)
+
+
 # ───────────────────────────── the bot ─────────────────────────────
 
 class RadarBot(commands.Bot):
@@ -247,6 +262,21 @@ class RadarCog(commands.Cog):
                    " haven't produced a *unique* opportunity — consider `/unwatch`.")
         await interaction.response.send_message(
             "📊 **Your internship radar** (Unique = first found here)\n" + table + tip)
+
+    @app_commands.command(description="Show the most recently discovered listings.")
+    @app_commands.describe(count="How many to show (1–20, default 10)")
+    async def latest(self, interaction: discord.Interaction, count: int = 10):
+        count = max(1, min(20, count))
+        listings = self.bot.db.recent_listings(count)
+        await interaction.response.send_message(
+            embed=browse_embed(f"🆕 Latest {len(listings)} listing(s)", listings))
+
+    @app_commands.command(description="Search saved listings by company or title keyword.")
+    @app_commands.describe(query="e.g. 'machine learning', 'Nvidia', 'backend'")
+    async def search(self, interaction: discord.Interaction, query: str):
+        listings = self.bot.db.search_listings(query, 15)
+        await interaction.response.send_message(
+            embed=browse_embed(f"🔎 '{query[:50]}' — {len(listings)} match(es)", listings))
 
     @app_commands.command(description="Bot status & counts.")
     async def status(self, interaction: discord.Interaction):
