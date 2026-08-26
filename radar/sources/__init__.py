@@ -3,12 +3,14 @@ from __future__ import annotations
 
 from .base import Source
 from .simplify import SimplifySource
+from .interninsider import InternInsiderSource
 from .generic import GenericHtmlSource
 from .playwright_source import PlaywrightSource
 
 # Order matters: most specific first, generic fallback last.
 _REGISTRY: list[type[Source]] = [
     SimplifySource,
+    InternInsiderSource,
     PlaywrightSource,
     GenericHtmlSource,
 ]
@@ -30,5 +32,5 @@ def source_for_kind(kind: str, url: str, name: str = "") -> Source:
     return pick_source(url, name)
 
 
-__all__ = ["Source", "pick_source", "source_for_kind",
-           "SimplifySource", "GenericHtmlSource", "PlaywrightSource"]
+__all__ = ["Source", "pick_source", "source_for_kind", "SimplifySource",
+           "InternInsiderSource", "GenericHtmlSource", "PlaywrightSource"]

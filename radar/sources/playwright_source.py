@@ -16,8 +16,9 @@ from .base import Source
 from .generic import GenericHtmlSource
 from ..models import RawListing
 
-# Domains we know need JS rendering.
-JS_DOMAINS = ("joinrunway.io", "intern-list.com", "interninsider.me")
+# JS-rendered domains handled by this generic fallback. (interninsider.me has its
+# own dedicated scraper; see sources/interninsider.py.)
+JS_DOMAINS = ("joinrunway.io", "intern-list.com")
 
 
 class PlaywrightSource(Source):
