@@ -113,18 +113,25 @@ your token never lands in Discord or the database):
 The token **expires** every few weeks — when Intern Insider stops returning
 results, refresh `INTERNINSIDER_URL` in `.env` and restart.
 
-### ❌ Runway & intern-list — not supported (investigated, impractical)
-- **Runway** (`app.joinrunway.io`) — an authenticated SPA. The explore page shows
-  *recommendations* that require a logged-in session, job cards use obfuscated
-  markup, and its tRPC API evicts response bodies. Would need a real logged-in
-  browser session.
-- **intern-list.com** — a front-end for **jobright.ai**; jobs come from jobright's
-  private API and never enter the page DOM (the page only exposes category chips).
-  Scraping it means hitting a private API — brittle and ToS-gray.
+### ✅ intern-list.com — supported
+intern-list embeds its listings from a public **jobright.ai** iframe
+(`jobright.ai/minisites-jobs/intern/us/<category>?embed=true`). The scraper
+renders that embed and parses the job cards. Just watch it:
 
-For broad, zero-maintenance coverage, prefer the structured GitHub feeds above —
-they already aggregate most of what these sites list. To add a JS site yourself,
-copy the pattern in `radar/sources/interninsider.py`.
+```
+/watch https://www.intern-list.com/          # defaults to the SWE category
+/watch https://www.intern-list.com/?k=swe    # or pick a category via ?k=
+```
+
+### ❌ Runway (app.joinrunway.io) — not supported
+An authenticated SPA. The explore page shows *recommendations* that require a
+logged-in session, job cards use obfuscated markup, and its tRPC API rejects
+requests without a logged-in session's exact internal payload
+(`BAD_REQUEST: Required`). Would need to log in as you and reconstruct a private
+API — brittle and against their terms.
+
+To add another JS site yourself, copy the pattern in
+`radar/sources/interninsider.py` or `radar/sources/intern_list.py`.
 
 ## How it's built
 

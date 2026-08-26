@@ -4,6 +4,7 @@ from __future__ import annotations
 from .base import Source
 from .simplify import SimplifySource
 from .interninsider import InternInsiderSource
+from .intern_list import InternListSource
 from .generic import GenericHtmlSource
 from .playwright_source import PlaywrightSource
 
@@ -11,6 +12,7 @@ from .playwright_source import PlaywrightSource
 _REGISTRY: list[type[Source]] = [
     SimplifySource,
     InternInsiderSource,
+    InternListSource,
     PlaywrightSource,
     GenericHtmlSource,
 ]
@@ -33,4 +35,5 @@ def source_for_kind(kind: str, url: str, name: str = "") -> Source:
 
 
 __all__ = ["Source", "pick_source", "source_for_kind", "SimplifySource",
-           "InternInsiderSource", "GenericHtmlSource", "PlaywrightSource"]
+           "InternInsiderSource", "InternListSource", "GenericHtmlSource",
+           "PlaywrightSource"]
