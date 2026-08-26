@@ -38,6 +38,11 @@ class Config:
     check_interval_minutes: int = field(default_factory=lambda: _int("CHECK_INTERVAL_MINUTES", 30))
     db_path: str = field(default_factory=lambda: os.getenv("RADAR_DB_PATH", "radar.db"))
 
+    # Ping @everyone on new listings? (set PING_EVERYONE=false to disable)
+    ping_everyone: bool = field(
+        default_factory=lambda: os.getenv("PING_EVERYONE", "true").strip().lower()
+        not in ("0", "false", "no", "off"))
+
     relevance_keywords: tuple[str, ...] = field(default_factory=lambda: _csv(
         "RELEVANCE_KEYWORDS",
         ("software", "swe", "developer", "machine learning", "ml", "ai",

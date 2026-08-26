@@ -25,6 +25,7 @@ def listing_embed(listing: Listing, source_name: str) -> discord.Embed:
     when = dt.datetime.fromtimestamp(listing.first_seen_at).strftime("%I:%M %p, %b %d")
     embed = discord.Embed(
         title=listing.title or "Internship",
+        url=listing.url if listing.url.startswith("http") else None,
         description=f"**{listing.company}**" if listing.company else None,
         color=0x2ecc71,
         timestamp=dt.datetime.now(dt.timezone.utc),
@@ -119,19 +120,40 @@ class RadarBot(commands.Bot):
                 return None
         return ch
 
+    # Ping @everyone individually up to this many; beyond it, one grouped ping
+    # so a feed glitch can never blast @everyone dozens of times.
+    MAX_INDIVIDUAL_PINGS = 5
+
     async def post_new_listings(self, results) -> int:
         """Send embed cards for every genuinely-new listing. Returns count posted."""
         channel = await self.channel("new")
+        new = [(res, l) for res in results for l in res.new_listings]
+        if not new:
+            return 0
+
+        ping = config.ping_everyone
+        everyone = discord.AllowedMentions(everyone=True)
+        grouped = ping and len(new) > self.MAX_INDIVIDUAL_PINGS
+
+        if channel is not None and grouped:
+            # One @everyone header, then post the cards without re-pinging.
+            await channel.send(
+                content=f"@everyone 🚨 **{len(new)} new internships found!**",
+                allowed_mentions=everyone)
+            await asyncio.sleep(0.6)
+
         posted = 0
-        for res in results:
-            src_url = self._source_url(res.source_id)
-            for listing in res.new_listings:
-                if channel is not None:
-                    await channel.send(embed=listing_embed(listing, res.source_name),
-                                       view=listing_view(listing, src_url))
-                    await asyncio.sleep(0.8)  # be gentle with rate limits
-                self.db.mark_notified(listing.id)
-                posted += 1
+        for res, listing in new:
+            if channel is not None:
+                content = "@everyone 🚨 **New internship!**" if (ping and not grouped) else None
+                await channel.send(
+                    content=content,
+                    embed=listing_embed(listing, res.source_name),
+                    view=listing_view(listing, self._source_url(res.source_id)),
+                    allowed_mentions=everyone if content else None)
+                await asyncio.sleep(0.8)  # be gentle with rate limits
+            self.db.mark_notified(listing.id)
+            posted += 1
         return posted
 
     def _source_url(self, source_id: int) -> str:
@@ -277,6 +299,27 @@ class RadarCog(commands.Cog):
         listings = self.bot.db.search_listings(query, 15)
         await interaction.response.send_message(
             embed=browse_embed(f"🔎 '{query[:50]}' — {len(listings)} match(es)", listings))
+
+    @app_commands.command(description="Post a sample alert to test the notification + @everyone ping.")
+    async def preview(self, interaction: discord.Interaction):
+        channel = await self.bot.channel("new")
+        if channel is None:
+            await interaction.response.send_message(
+                "⚠️ CHANNEL_NEW_INTERNSHIPS isn't set.", ephemeral=True)
+            return
+        await interaction.response.send_message(
+            "📨 Posting a sample alert to the channel…", ephemeral=True)
+        sample = Listing(
+            id=0, fingerprint="preview", company="Acme Robotics",
+            title="Software Engineer Intern — PREVIEW",
+            location="Remote / Blacksburg, VA", url="https://example.com/apply",
+            term="Summer 2027", category="Software Engineering",
+            first_seen_at=time.time(), first_source_id=0, notified=0, other_sources=[])
+        content = "@everyone 🚨 **New internship!**" if config.ping_everyone else None
+        await channel.send(
+            content=content, embed=listing_embed(sample, "Preview"),
+            view=listing_view(sample, "https://example.com"),
+            allowed_mentions=discord.AllowedMentions(everyone=True) if content else None)
 
     @app_commands.command(description="Bot status & counts.")
     async def status(self, interaction: discord.Interaction):
