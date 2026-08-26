@@ -89,34 +89,42 @@ scrape reliably and global de-dup merges their overlap:
 /watch https://github.com/SimplifyJobs/New-Grad-Positions
 ```
 
-## JavaScript-heavy sites (Runway, intern-list, interninsider) — experimental
-
-These render listings in the browser, so they need Playwright:
+## JavaScript-heavy sites (need Playwright)
 
 ```bash
 pip install playwright
 python -m playwright install chromium
 ```
 
-The bot auto-routes those domains through Playwright, but **investigation showed
-they resist scraping** and are not reliably supported today:
+### ✅ Intern Insider (interninsider.me) — supported
+Its feed is gated by a **personal token**. Put the full token URL in `.env`:
 
-- **Runway** (`app.joinrunway.io`) — an authenticated single-page app. The explore
-  page shows *recommendations* that require a logged-in session, its job cards use
-  obfuscated markup, and its tRPC API evicts response bodies. Would need a real
-  logged-in browser session to scrape.
-- **intern-list.com** — a front-end for **jobright.ai**; the listings come from
-  jobright's private API, not the page HTML. Hitting that directly is brittle and
-  ToS-gray.
-- **interninsider.me** — requires a **personal token**. Keep it in `.env` as
-  `INTERNINSIDER_URL`, never in code, and rotate it since it was shared in
-  plaintext.
+```
+INTERNINSIDER_URL=https://interninsider.me/internships/new?mcp_token=YOUR_TOKEN
+```
 
-If you `/watch` one of these, the bot won't crash — it just tends to find nothing,
-and `/radar` will flag it as unproductive. For real coverage, prefer the
-structured GitHub feeds above. To properly support a JS site, replace the generic
-extraction in `radar/sources/playwright_source.py` with per-site selectors (or an
-authenticated session) — see `radar/sources/simplify.py` for the gold standard.
+Then watch the plain domain (the scraper swaps in the token URL for the fetch, so
+your token never lands in Discord or the database):
+
+```
+/watch https://interninsider.me/internships/new
+```
+
+The token **expires** every few weeks — when Intern Insider stops returning
+results, refresh `INTERNINSIDER_URL` in `.env` and restart.
+
+### ❌ Runway & intern-list — not supported (investigated, impractical)
+- **Runway** (`app.joinrunway.io`) — an authenticated SPA. The explore page shows
+  *recommendations* that require a logged-in session, job cards use obfuscated
+  markup, and its tRPC API evicts response bodies. Would need a real logged-in
+  browser session.
+- **intern-list.com** — a front-end for **jobright.ai**; jobs come from jobright's
+  private API and never enter the page DOM (the page only exposes category chips).
+  Scraping it means hitting a private API — brittle and ToS-gray.
+
+For broad, zero-maintenance coverage, prefer the structured GitHub feeds above —
+they already aggregate most of what these sites list. To add a JS site yourself,
+copy the pattern in `radar/sources/interninsider.py`.
 
 ## How it's built
 
