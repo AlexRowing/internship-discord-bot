@@ -71,12 +71,20 @@ class RadarBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         await self.add_cog(RadarCog(self))
-        if config.guild_id:
-            guild = discord.Object(id=config.guild_id)
-            self.tree.copy_global_to(guild=guild)
-            await self.tree.sync(guild=guild)
-        else:
-            await self.tree.sync()
+        try:
+            if config.guild_id:
+                guild = discord.Object(id=config.guild_id)
+                self.tree.copy_global_to(guild=guild)
+                await self.tree.sync(guild=guild)
+            else:
+                await self.tree.sync()
+        except discord.Forbidden:
+            print("⚠️  Could not register slash commands (403 Missing Access).")
+            print("    The bot must be invited to your server WITH the")
+            print("    'applications.commands' scope. Re-invite it via:")
+            print("    Developer Portal → OAuth2 → URL Generator →")
+            print("    scopes: bot + applications.commands, then restart.")
+            print("    Also confirm DISCORD_GUILD_ID is the server the bot is in.")
         self.check_loop.start()
 
     async def on_ready(self) -> None:
