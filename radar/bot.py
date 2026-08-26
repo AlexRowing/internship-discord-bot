@@ -335,9 +335,25 @@ class RadarCog(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
+def _startup_selfcheck() -> None:
+    import sys
+    print(f"[selfcheck] python : {sys.executable}")
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            b = p.chromium.launch(headless=True)
+            v = b.version
+            b.close()
+        print(f"[selfcheck] Playwright chromium OK ({v})")
+    except Exception as e:  # noqa: BLE001
+        print(f"[selfcheck] Playwright NOT working: {type(e).__name__}: "
+              f"{str(e).splitlines()[0][:160]}")
+
+
 def run() -> None:
     from ._console import setup_console
     setup_console()
+    _startup_selfcheck()
     problems = config.validate()
     if problems:
         print("❌ Cannot start — fix your .env:")
