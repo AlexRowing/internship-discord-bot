@@ -16,7 +16,9 @@ from .models import Listing
 from .sources import pick_source
 
 INTENTS = discord.Intents.default()
-CHECK_MINUTES = max(5, config.check_interval_minutes)
+# Floor of 1 min guards against 0/negative; be mindful the GitHub feed is ~11 MB
+# per fetch and the JS sites launch a browser each check.
+CHECK_MINUTES = max(1, config.check_interval_minutes)
 
 
 # ───────────────────────────── presentation ─────────────────────────────
